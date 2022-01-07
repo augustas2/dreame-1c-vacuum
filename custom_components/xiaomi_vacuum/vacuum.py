@@ -132,7 +132,7 @@ ERROR_CODE_TO_ERROR = {
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up the Xiaomi vacuum cleaner robot platform."""
+    """Set up the Xiaomi vacuum cleaner platform."""
     if DATA_KEY not in hass.data:
         hass.data[DATA_KEY] = {}
 
@@ -144,10 +144,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     _LOGGER.info("Initializing with host %s (token %s...)", host, token)
     vacuum = DreameVacuum(host, token)
 
-    mirobo = MiroboVacuum(name, vacuum)
-    hass.data[DATA_KEY][host] = mirobo
+    dreame_vacuum_entity = DreameVacuumEntity(name, vacuum)
+    hass.data[DATA_KEY][host] = dreame_vacuum_entity
 
-    async_add_entities([mirobo], update_before_add=True)
+    async_add_entities([dreame_vacuum_entity], update_before_add=True)
 
     platform = entity_platform.current_platform.get()
 
@@ -159,7 +159,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
                 vol.Coerce(int), vol.Clamp(min=1, max=3)
             ),
         },
-        MiroboVacuum.async_clean_zone.__name__,
+        DreameVacuumEntity.async_clean_zone.__name__,
     )
 
     platform.async_register_entity_service(
@@ -167,10 +167,10 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         {
             vol.Required(ATTR_WATER_LEVEL): cv.string,
         },
-        MiroboVacuum.async_set_water_level.__name__,
+        DreameVacuumEntity.async_set_water_level.__name__,
     )
 
-class MiroboVacuum(StateVacuumEntity):
+class DreameVacuumEntity(StateVacuumEntity):
     """Representation of a Xiaomi vacuum cleaner robot."""
 
     def __init__(self, name, vacuum):
