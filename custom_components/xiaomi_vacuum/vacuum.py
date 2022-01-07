@@ -53,9 +53,14 @@ ATTR_SIDE_BRUSH_LIFE_LEVEL = "side_brush_life_level"
 ATTR_FILTER_LIFE_LEVEL = "filter_life_level"
 ATTR_FILTER_LEFT_TIME = "filter_left_time"
 ATTR_CLEANING_TOTAL_TIME = "total_cleaning_count"
+ATTR_CLEANING_TOTAL_AREA = "total_cleaning_area"
 ATTR_ZONE_ARRAY = "zone"
 ATTR_ZONE_REPEATER = "repeats"
 ATTR_WATER_LEVEL = "water_level"
+ATTR_WATER_LEVEL_LIST = "water_level_list"
+ATTR_AUDIO_VOLUME = "audio_volume"
+ATTR_AUDIO_LANGUAGE = "audio_language"
+ATTR_TIMEZONE = "timezone"
 
 SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
 SERVICE_WATER_LEVEL = "set_water_level"
@@ -166,7 +171,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     )
 
 class MiroboVacuum(StateVacuumEntity):
-    """Representation of a Xiaomi Vacuum cleaner robot."""
+    """Representation of a Xiaomi vacuum cleaner robot."""
 
     def __init__(self, name, vacuum):
         """Initialize the Xiaomi vacuum cleaner robot handler."""
@@ -175,12 +180,11 @@ class MiroboVacuum(StateVacuumEntity):
 
         self._fan_speeds = None
         self._fan_speeds_reverse = None
+        self._current_fan_speed = None
 
         self.vacuum_state = None
         self.vacuum_error = None
         self.battery_percentage = None
-        
-        self._current_fan_speed = None
 
         self._main_brush_time_left = None
         self._main_brush_life_level = None
@@ -192,13 +196,19 @@ class MiroboVacuum(StateVacuumEntity):
         self._filter_left_time = None
 
         self._total_clean_count = None
+        self._total_area = None
+
         self._cleaning_area = None
-        self._cleaning_time = None		
+        self._cleaning_time = None
 
         self._water_level = None
         self._current_water_level = None
         self._water_level_reverse = None
-        
+
+        self._audio_volume = None
+        self._audio_language = None
+
+        self._timezone = None
 
     @property
     def name(self):
@@ -251,33 +261,33 @@ class MiroboVacuum(StateVacuumEntity):
 
     @property
     def fan_speed_list(self):
-        """Get the list of available fan speed steps of the vacuum cleaner."""
+        """Get the list of available fan speeds of the vacuum cleaner."""
         return list(self._fan_speeds_reverse)
 
     @property
     def water_level(self):
-        """Return the fan speed of the vacuum cleaner."""
+        """Return the water level of the vacuum cleaner."""
         if self.vacuum_state is not None:
             water = self._current_water_level
             if water in self._water_level_reverse:
                 return WATER_CODE_TO_NAME.get(self._current_water_level, "Unknown")
 
-            _LOGGER.debug("Unable to find reverse for %s", speed)
+            _LOGGER.debug("Unable to find reverse for %s", water)
 
             return water
 
     @property
     def water_level_list(self):
-        """Get the list of available water level list of the vacuum cleaner."""
+        """Get the list of available water levels of the vacuum cleaner."""
         return list(self._water_level_reverse)
 
     @property
     def extra_state_attributes(self):
-        """Return the specific state attributes of this vacuum cleaner."""
+        """Return the extra state attributes of this vacuum cleaner."""
         if self.vacuum_state is not None:
             return {
                 ATTR_STATUS: STATE_CODE_TO_STATE[int(self.vacuum_state)],
-                ATTR_ERROR:  ERROR_CODE_TO_ERROR.get(self.vacuum_error, "Unknown"),
+                ATTR_ERROR: ERROR_CODE_TO_ERROR.get(self.vacuum_error, "Unknown"),
 				ATTR_FAN_SPEED: SPEED_CODE_TO_NAME.get(self._current_fan_speed, "Unknown"),
                 ATTR_MAIN_BRUSH_LEFT_TIME: self._main_brush_time_left,
                 ATTR_MAIN_BRUSH_LIFE_LEVEL: self._main_brush_life_level,
@@ -286,12 +296,15 @@ class MiroboVacuum(StateVacuumEntity):
                 ATTR_FILTER_LIFE_LEVEL: self._filter_life_level,
                 ATTR_FILTER_LEFT_TIME: self._filter_left_time,
                 ATTR_CLEANING_AREA: self._cleaning_area,
-                ATTR_CLEANING_TIME: self._cleaning_time,				
+                ATTR_CLEANING_TOTAL_AREA: self._total_area,
+                ATTR_CLEANING_TIME: self._cleaning_time,
                 ATTR_CLEANING_TOTAL_TIME: self._total_clean_count,
 				ATTR_WATER_LEVEL: WATER_CODE_TO_NAME.get(self._current_water_level, "Unknown"),
-				"water_level_list": ["Low", "Med", "High"],
-            } 
-
+                ATTR_WATER_LEVEL_LIST: ["Low", "Med", "High"],
+                ATTR_AUDIO_VOLUME: self._audio_volume,
+                ATTR_AUDIO_LANGUAGE: self._audio_language,
+                ATTR_TIMEZONE: self._timezone,
+            }
 
     @property
     def supported_features(self):
@@ -307,30 +320,28 @@ class MiroboVacuum(StateVacuumEntity):
             _LOGGER.error(mask_error, exc)
             return False
 
-    
     async def async_locate(self, **kwargs):
         """Locate the vacuum cleaner."""
         await self._try_command("Unable to locate the botvac: %s", self._vacuum.find)
 
     async def async_start(self):
         """Start or resume the cleaning task."""
-        await self._try_command(
-            "Unable to start the vacuum: %s", self._vacuum.start)
+        await self._try_command("Unable to start the vacuum: %s", self._vacuum.start)
 
     async def async_stop(self, **kwargs):
         """Stop the vacuum cleaner."""
-        await self._try_command("Unable to stop: %s", self._vacuum.stop)
+        await self._try_command("Unable to stop the vacuum: %s", self._vacuum.stop)
 
     async def async_clean_zone(self, zone, repeats=1):
         """Clean selected area."""
         try:
             await self.hass.async_add_executor_job(self._vacuum.zone_cleanup, zone)
         except (OSError, DeviceException) as exc:
-            _LOGGER.error("Unable to send zoned_clean command to the vacuum: %s", exc)
+            _LOGGER.error("Unable to send clean_zone command to the vacuum: %s", exc)
 
     async def async_pause(self):
         """Pause the cleaning task."""
-        await self._try_command("Unable to set start/pause: %s", self._vacuum.stop)
+        await self._try_command("Unable to start/pause the vacuum: %s", self._vacuum.stop)
 
     async def async_return_to_base(self, **kwargs):
         """Set the vacuum cleaner to return to the dock."""
@@ -350,8 +361,7 @@ class MiroboVacuum(StateVacuumEntity):
                     self.fan_speed_list,
                 )
                 return
-        await self._try_command(
-            "Unable to set fan speed: %s", self._vacuum.set_fan_speed, fan_speed)    
+        await self._try_command("Unable to set fan speed: %s", self._vacuum.set_fan_speed, fan_speed)
 
     async def async_set_water_level(self, water_level, **kwargs):
         """Set water level."""
@@ -367,26 +377,26 @@ class MiroboVacuum(StateVacuumEntity):
                     self.water_level_list,
                 )
                 return
-        await self._try_command(
-            "Unable to set water level: %s", self._vacuum.set_water_level, water_level)    
-
-
+        await self._try_command("Unable to set water level: %s", self._vacuum.set_water_level, water_level)
 
     def update(self):
         """Fetch state from the device."""
         try:
             state = self._vacuum.status()
+
+            _LOGGER.error(state)
+
             self.vacuum_state = state.status
             self.vacuum_error = state.error
 
             self._fan_speeds = SPEED_CODE_TO_NAME
             self._fan_speeds_reverse = {v: k for k, v in self._fan_speeds.items()}
+            self._current_fan_speed = state.fan_speed
 
             self.battery_percentage = state.battery
 
             self._total_clean_count = state.total_clean_count
-
-            self._current_fan_speed = state.fan_speed
+            self._total_area = state.total_area
 
             self._main_brush_time_left = state.brush_left_time
             self._main_brush_life_level = state.brush_life_level
@@ -396,13 +406,18 @@ class MiroboVacuum(StateVacuumEntity):
 
             self._filter_life_level = state.filter_life_level
             self._filter_left_time = state.filter_left_time
-			
+
             self._cleaning_area = state.area
             self._cleaning_time = state.timer
-			
+
             self._water_level = WATER_CODE_TO_NAME
             self._water_level_reverse = {v: k for k, v in self._water_level.items()}
             self._current_water_level = state.water_level
 
+            self._audio_volume = state.audio_volume
+            self._audio_language = state.audio_language
+
+            self._timezone = state.timezone
+
         except OSError as exc:
-            _LOGGER.error("Got OSError while fetching the state: %s", exc) 
+            _LOGGER.error("Got OSError while fetching the state: %s", exc)
