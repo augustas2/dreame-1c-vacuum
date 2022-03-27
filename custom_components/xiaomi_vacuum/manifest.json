@@ -1,8 +1,8 @@
 {
   "domain": "xiaomi_vacuum",
-  "name": "Xiaomi Vacuum",
+  "name": "Xiaomi Vacuum 1C",
   "documentation": "",
   "requirements": [],
-  "codeowners": ["@concentricc"],
+  "codeowners": ["@augustas2"],
   "version": "1.0"
 }

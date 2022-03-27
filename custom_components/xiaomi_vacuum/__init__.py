@@ -1,4 +1,4 @@
-"""The Xiaomi Vacuum component."""
+"""Xiaomi Vacuum 1C component"""
 DOMAIN = 'xiaomi_vacuum'
 
 async def async_setup(hass, config):

@@ -1,4 +1,4 @@
-"""Xiaomi Vacuum"""
+"""Xiaomi Vacuum 1C"""
 from functools import partial
 import logging
 import voluptuous as vol
@@ -29,7 +29,7 @@ from homeassistant.helpers import config_validation as cv, entity_platform
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_NAME = "Xiaomi Vacuum cleaner"
+DEFAULT_NAME = "Xiaomi vacuum cleaner"
 DATA_KEY = "vacuum.xiaomi_vacuum"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -54,15 +54,9 @@ ATTR_FILTER_LIFE_LEVEL = "filter_life_level"
 ATTR_FILTER_LEFT_TIME = "filter_left_time"
 ATTR_CLEANING_TOTAL_TIME = "total_cleaning_count"
 ATTR_CLEANING_TOTAL_AREA = "total_cleaning_area"
-ATTR_ZONE_ARRAY = "zone"
-ATTR_ZONE_REPEATER = "repeats"
 ATTR_WATER_LEVEL = "water_level"
 ATTR_WATER_LEVEL_LIST = "water_level_list"
-ATTR_AUDIO_VOLUME = "audio_volume"
-ATTR_AUDIO_LANGUAGE = "audio_language"
-ATTR_TIMEZONE = "timezone"
 
-SERVICE_CLEAN_ZONE = "vacuum_clean_zone"
 SERVICE_WATER_LEVEL = "set_water_level"
 
 SUPPORT_XIAOMI = (
@@ -152,17 +146,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     platform = entity_platform.current_platform.get()
 
     platform.async_register_entity_service(
-        SERVICE_CLEAN_ZONE,
-        {
-            vol.Required(ATTR_ZONE_ARRAY): cv.string,
-            vol.Required(ATTR_ZONE_REPEATER): vol.All(
-                vol.Coerce(int), vol.Clamp(min=1, max=3)
-            ),
-        },
-        DreameVacuumEntity.async_clean_zone.__name__,
-    )
-
-    platform.async_register_entity_service(
         SERVICE_WATER_LEVEL,
         {
             vol.Required(ATTR_WATER_LEVEL): cv.string,
@@ -204,11 +187,6 @@ class DreameVacuumEntity(StateVacuumEntity):
         self._water_level = None
         self._current_water_level = None
         self._water_level_reverse = None
-
-        self._audio_volume = None
-        self._audio_language = None
-
-        self._timezone = None
 
     @property
     def name(self):
@@ -301,9 +279,6 @@ class DreameVacuumEntity(StateVacuumEntity):
                 ATTR_CLEANING_TOTAL_TIME: self._total_clean_count,
 				ATTR_WATER_LEVEL: WATER_CODE_TO_NAME.get(self._current_water_level, "Unknown"),
                 ATTR_WATER_LEVEL_LIST: ["Low", "Med", "High"],
-                ATTR_AUDIO_VOLUME: self._audio_volume,
-                ATTR_AUDIO_LANGUAGE: self._audio_language,
-                ATTR_TIMEZONE: self._timezone,
             }
 
     @property
@@ -331,13 +306,6 @@ class DreameVacuumEntity(StateVacuumEntity):
     async def async_stop(self, **kwargs):
         """Stop the vacuum cleaner."""
         await self._try_command("Unable to stop the vacuum: %s", self._vacuum.stop)
-
-    async def async_clean_zone(self, zone, repeats=1):
-        """Clean selected area."""
-        try:
-            await self.hass.async_add_executor_job(self._vacuum.zone_cleanup, zone)
-        except (OSError, DeviceException) as exc:
-            _LOGGER.error("Unable to send clean_zone command to the vacuum: %s", exc)
 
     async def async_pause(self):
         """Pause the cleaning task."""
@@ -384,8 +352,6 @@ class DreameVacuumEntity(StateVacuumEntity):
         try:
             state = self._vacuum.status()
 
-            _LOGGER.error(state)
-
             self.vacuum_state = state.status
             self.vacuum_error = state.error
 
@@ -413,11 +379,6 @@ class DreameVacuumEntity(StateVacuumEntity):
             self._water_level = WATER_CODE_TO_NAME
             self._water_level_reverse = {v: k for k, v in self._water_level.items()}
             self._current_water_level = state.water_level
-
-            self._audio_volume = state.audio_volume
-            self._audio_language = state.audio_language
-
-            self._timezone = state.timezone
 
         except OSError as exc:
             _LOGGER.error("Got OSError while fetching the state: %s", exc)

@@ -58,12 +58,11 @@ class VacuumStatus(Enum):
 
 
 class VacuumSpeed(Enum):
-    """Fan speeds, same as for ViomiVacuum."""
-
     Silent = 0
     Standard = 1
     Medium = 2
     Turbo = 3
+
 
 class WaterLevel(Enum):
     Low = 1
@@ -72,7 +71,7 @@ class WaterLevel(Enum):
 
 @dataclass
 class DreameStatus:
-    _max_properties = 14
+    _max_properties = 10
     # siid 2: (Battery): 2 props, 1 actions
     # piid: 1 (Battery Level): (uint8, unit: percentage) (acc: ['read', 'notify'], value-list: [], value-range: [0, 100, 1])
     battery: int = field(metadata={"siid": 2, "piid": 1, "access": ["read", "notify"]},default=None)
@@ -178,18 +177,12 @@ class DreameStatus:
         metadata={"siid": 18, "piid": 16, "access": ["read", "notify"]},
         default=None
     )
-    # piid: 17 (): (uint16, unit: None) (acc: ['read', 'notify'], value-list: [], value-range: [0, 100, 1])
-    button_led: int = field(
-        metadata={"siid": 18, "piid": 17, "access": ["read", "notify"]},
-        default=None
-    )
     # piid: 18 (): (uint8, unit: None) (acc: ['read', 'notify'], value-list: [{'value': 0, 'description': ''}, {'value': 1, 'description': ''}], value-range: None)
     clean_success: int = field(
         metadata={"siid": 18, "piid": 18, "access": ["read", "notify"]},
         default=None
     )
-
-    # piid: 20 (): 
+    # piid: 20 ():
     water_level: int = field(
         metadata={
             "siid": 18,
@@ -199,8 +192,6 @@ class DreameStatus:
         },
         default=None
     )
-
-
     # siid 19: (consumable): 3 props, 0 actions
     # piid: 1 (life-sieve): (string, unit: None) (acc: ['read', 'write'], value-list: [], value-range: None)
     life_sieve: str = field(
@@ -215,22 +206,6 @@ class DreameStatus:
     # piid: 3 (life-brush-main): (string, unit: None) (acc: ['read', 'write'], value-list: [], value-range: None)
     life_brush_main: str = field(
         metadata={"siid": 19, "piid": 3, "access": ["read", "write"]},
-        default=None
-    )
-    # siid 20: (annoy): 3 props, 0 actions
-    # piid: 1 (enable): (bool, unit: None) (acc: ['read', 'write'], value-list: [], value-range: None)
-    dnd_enabled: bool = field(
-        metadata={"siid": 20, "piid": 1, "access": ["read", "write"]},
-        default=None
-    )
-    # piid: 2 (start-time): (string, unit: None) (acc: ['read', 'write'], value-list: [], value-range: None)
-    dnd_start_time: str = field(
-        metadata={"siid": 20, "piid": 2, "access": ["read", "write"]},
-        default=None
-    )
-    # piid: 3 (stop-time): (string, unit: None) (acc: ['read', 'write'], value-list: [], value-range: None)
-    dnd_stop_time: str = field(
-        metadata={"siid": 20, "piid": 3, "access": ["read", "write"]},
         default=None
     )
     # siid 21: (remote): 2 props, 3 actions
@@ -264,11 +239,10 @@ class DreameStatus:
         metadata={"siid": 25, "piid": 1, "access": ["read", "notify"]},
         default=None
     )
-    
 
 
 class DreameVacuum(MiotDevice):
-    """Support for dreame vacuum (1C STYTJ01ZHM, dreame.vacuum.mc1808)."""
+    """Support for Dreame Vacuum (1C, dreame.vacuum.mc1808)."""
 
     _MAPPING = DreameStatus
 
@@ -292,13 +266,13 @@ class DreameVacuum(MiotDevice):
     def set_fan_speed(self, speed):
         """Set fan speed"""
         return self.set_property(fan_speed=speed)
-        
+
     # siid 2: (Battery): 2 props, 1 actions
     # aiid 1 Start Charge: in: [] -> out: []
     @command()
     def return_home(self) -> None:
         """aiid 1 Start Charge: in: [] -> out: []"""
-        return self.call_action(2, 1) 
+        return self.call_action(2, 1)
 
     # siid 3: (Robot Cleaner): 2 props, 2 actions
     # aiid 1 Start Sweep: in: [] -> out: []
@@ -360,7 +334,7 @@ class DreameVacuum(MiotDevice):
     def zone_cleanup(self, coords) -> None:
         """Start zone cleaning."""
         payload = [{"piid": 1, "value": 19},{"piid": 21, "value": coords}]
-        return self.call_action(18, 1, payload)   
+        return self.call_action(18, 1, payload)
 
     # siid 21: (remote): 2 props, 3 actions
     # aiid 1 start-remote: in: [1, 2] -> out: []
@@ -417,4 +391,3 @@ class DreameVacuum(MiotDevice):
     def set_water_level(self, water):
         """Set water level"""
         return self.set_property(water_level=water)
-        
