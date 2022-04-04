@@ -145,13 +145,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     platform = entity_platform.current_platform.get()
 
-    platform.async_register_entity_service(
-        SERVICE_WATER_LEVEL,
-        {
-            vol.Required(ATTR_WATER_LEVEL): cv.string,
-        },
-        DreameVacuumEntity.async_set_water_level.__name__,
-    )
 
 class DreameVacuumEntity(StateVacuumEntity):
     """Representation of a Xiaomi vacuum cleaner robot."""
