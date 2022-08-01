@@ -15,6 +15,7 @@ from homeassistant.components.vacuum import (
     SUPPORT_START,
     SUPPORT_STOP,
     SUPPORT_FAN_SPEED,
+    SUPPORT_SEND_COMMAND,
     STATE_CLEANING,
     STATE_IDLE,
     STATE_PAUSED,
@@ -57,8 +58,6 @@ ATTR_CLEANING_TOTAL_AREA = "total_cleaning_area"
 ATTR_WATER_LEVEL = "water_level"
 ATTR_WATER_LEVEL_LIST = "water_level_list"
 
-SERVICE_WATER_LEVEL = "set_water_level"
-
 SUPPORT_XIAOMI = (
     SUPPORT_STATE
     | SUPPORT_BATTERY
@@ -68,6 +67,7 @@ SUPPORT_XIAOMI = (
     | SUPPORT_STOP
     | SUPPORT_PAUSE
     | SUPPORT_FAN_SPEED
+    | SUPPORT_SEND_COMMAND
 )
 
 STATE_CODE_TO_STATE = {
@@ -88,7 +88,7 @@ SPEED_CODE_TO_NAME = {
 
 WATER_CODE_TO_NAME = {
     1: "Low",
-    2: "Med",
+    2: "Medium",
     3: "High",
 }
 
@@ -142,8 +142,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     hass.data[DATA_KEY][host] = dreame_vacuum_entity
 
     async_add_entities([dreame_vacuum_entity], update_before_add=True)
-
-    platform = entity_platform.current_platform.get()
 
 
 class DreameVacuumEntity(StateVacuumEntity):
@@ -271,7 +269,7 @@ class DreameVacuumEntity(StateVacuumEntity):
                 ATTR_CLEANING_TIME: self._cleaning_time,
                 ATTR_CLEANING_TOTAL_TIME: self._total_clean_count,
 				ATTR_WATER_LEVEL: WATER_CODE_TO_NAME.get(self._current_water_level, "Unknown"),
-                ATTR_WATER_LEVEL_LIST: ["Low", "Med", "High"],
+                ATTR_WATER_LEVEL_LIST: ["Low", "Medium", "High"],
             }
 
     @property
@@ -324,7 +322,7 @@ class DreameVacuumEntity(StateVacuumEntity):
                 return
         await self._try_command("Unable to set fan speed: %s", self._vacuum.set_fan_speed, fan_speed)
 
-    async def async_set_water_level(self, water_level, **kwargs):
+    async def set_water_level(self, water_level, **kwargs):
         """Set water level."""
         if water_level in self._water_level_reverse:
             water_level = self._water_level_reverse[water_level]
@@ -339,6 +337,13 @@ class DreameVacuumEntity(StateVacuumEntity):
                 )
                 return
         await self._try_command("Unable to set water level: %s", self._vacuum.set_water_level, water_level)
+
+    async def async_send_command(self, command, params, **kwargs):
+        """Send a command to a vacuum cleaner."""
+        if command == "set_water_level":
+            await self.set_water_level(params['water_level'])
+        else:
+            raise NotImplementedError()
 
     def update(self):
         """Fetch state from the device."""
